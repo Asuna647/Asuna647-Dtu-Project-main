@@ -384,6 +384,17 @@ Keep it simple. 2-3 sentences. In English."""
 explainer: Optional[LLMExplainer] = None
 
 
+def explain_eligibility(result: Dict[str, Any], language: str = "hi") -> str:
+    """
+    Module-level helper function to generate simple explanation of verified eligibility result.
+    Uses LLMExplainer if available or fallback.
+    """
+    global explainer
+    if explainer is None:
+        explainer = LLMExplainer()
+    return explainer.explain_eligibility(result, language=language)
+
+
 def init_llm_explainer(api_key: Optional[str] = None, model: str = "gpt-3.5-turbo"):
     """
     Initialize global LLM explainer.

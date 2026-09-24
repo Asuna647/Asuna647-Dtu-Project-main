@@ -134,8 +134,8 @@ def test_check_eligibility_ignoaps_cannot_determine():
     assert data["confidence"] == 0.0
 
 
-def test_check_eligibility_eshram_not_implemented():
-    """POST /api/check-eligibility (ESHRAM) returns not_implemented, not 500."""
+def test_check_eligibility_eshram_implemented():
+    """POST /api/check-eligibility (ESHRAM) evaluates eligibility correctly."""
     payload = {
         "scheme": "ESHRAM",
         "age": 35,
@@ -144,15 +144,15 @@ def test_check_eligibility_eshram_not_implemented():
         "is_farmer": False,
     }
     response = client.post("/api/check-eligibility", json=payload)
-    assert response.status_code == 200  # NOT 500
+    assert response.status_code == 200
     data = response.json()
-    assert data["eligible"] is False
-    assert data["verdict"] == "not_implemented"
-    assert data["confidence"] == 0.0
+    assert data["eligible"] is True
+    assert data["verdict"] == "eligible"
+    assert data["confidence"] == 1.0
 
 
-def test_check_eligibility_pm_kisan_not_implemented():
-    """POST /api/check-eligibility (PM_KISAN) returns not_implemented, not 500."""
+def test_check_eligibility_pm_kisan_implemented():
+    """POST /api/check-eligibility (PM_KISAN) evaluates eligibility correctly."""
     payload = {
         "scheme": "PM_KISAN",
         "age": 45,
@@ -161,11 +161,11 @@ def test_check_eligibility_pm_kisan_not_implemented():
         "is_farmer": True,
     }
     response = client.post("/api/check-eligibility", json=payload)
-    assert response.status_code == 200  # NOT 500
+    assert response.status_code == 200
     data = response.json()
-    assert data["eligible"] is False
-    assert data["verdict"] == "not_implemented"
-    assert data["confidence"] == 0.0
+    assert data["eligible"] is True
+    assert data["verdict"] == "eligible"
+    assert data["confidence"] == 1.0
 
 
 # ============================================================================
@@ -198,7 +198,7 @@ def test_voice_query_generic():
     data = response.json()
     # Should have at least 1 matched scheme (graceful degradation)
     assert len(data["matched_schemes"]) >= 1
-    assert data["intent"] in ["eligibility_check", "scheme_info", "general", "unknown"]
+    assert data["intent"] in ["eligibility_check", "scheme_info", "application_help", "general", "unknown"]
 
 
 def test_voice_query_empty_query():

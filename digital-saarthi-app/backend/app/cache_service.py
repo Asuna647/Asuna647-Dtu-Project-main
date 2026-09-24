@@ -108,6 +108,29 @@ class CacheService:
         except (json.JSONDecodeError, IOError):
             return None
 
+    def get_cached_response(self, endpoint: str) -> Optional[Dict[str, Any]]:
+        """Retrieve cached API response if available and not stale."""
+        key = f"response_{endpoint}"
+        if key not in self.index:
+            return None
+
+        entry = self.index[key]
+        cached_at = datetime.fromisoformat(entry["cached_at"])
+        ttl = timedelta(hours=entry["ttl_hours"])
+
+        if datetime.utcnow() - cached_at > ttl:
+            return None  # Stale
+
+        cache_file = Path(entry["file"])
+        if not cache_file.exists():
+            return None
+
+        try:
+            with open(cache_file) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
+
     def cache_response(self, endpoint: str, response: Dict[str, Any], ttl_hours: int = 1):
         """Cache API responses with TTL."""
         cache_file = self.cache_dir / f"response_{hash(endpoint) % 10000}.json"
@@ -121,6 +144,29 @@ class CacheService:
             "file": str(cache_file)
         }
         self._save_index()
+
+    def get_cached_response(self, endpoint: str) -> Optional[Dict[str, Any]]:
+        """Retrieve cached API response if available and not stale."""
+        key = f"response_{endpoint}"
+        if key not in self.index:
+            return None
+
+        entry = self.index[key]
+        cached_at = datetime.fromisoformat(entry["cached_at"])
+        ttl = timedelta(hours=entry["ttl_hours"])
+
+        if datetime.utcnow() - cached_at > ttl:
+            return None  # Stale
+
+        cache_file = Path(entry["file"])
+        if not cache_file.exists():
+            return None
+
+        try:
+            with open(cache_file) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
 
     def clear_expired_cache(self):
         """Remove stale cache entries."""

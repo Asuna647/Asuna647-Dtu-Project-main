@@ -7,10 +7,16 @@ from app.scheme_rules import is_eligible_eshram, is_eligible_pm_kisan, check_all
 
 
 class TestEShramEligibility:
-    """Test E-Shram scheme eligibility."""
+    """Test E-Shram scheme eligibility against official government rules."""
+
+    def test_eshram_age_16_eligible(self):
+        """Age 16 is minimum eligible age."""
+        eligible, reason, confidence = is_eligible_eshram(age=16)
+        assert eligible is True
+        assert confidence == 1.0
 
     def test_eshram_age_18_eligible(self):
-        """Age 18 is minimum eligible age."""
+        """Age 18 is eligible."""
         eligible, reason, confidence = is_eligible_eshram(age=18)
         assert eligible is True
         assert confidence == 1.0
@@ -21,11 +27,11 @@ class TestEShramEligibility:
         assert eligible is True
         assert confidence == 1.0
 
-    def test_eshram_age_17_ineligible(self):
-        """Age below 18 ineligible."""
-        eligible, reason, confidence = is_eligible_eshram(age=17)
+    def test_eshram_age_15_ineligible(self):
+        """Age below 16 ineligible."""
+        eligible, reason, confidence = is_eligible_eshram(age=15)
         assert eligible is False
-        assert "below 18" in reason.lower()
+        assert "below 16" in reason.lower()
 
     def test_eshram_age_60_ineligible(self):
         """Age 60 and above ineligible."""
@@ -51,11 +57,11 @@ class TestEShramEligibility:
         assert eligible is False
         assert "EPF" in reason
 
-    def test_eshram_income_limit(self):
-        """Income above ₹15,000 makes ineligible."""
-        eligible, reason, confidence = is_eligible_eshram(age=30, annual_income=20000)
+    def test_eshram_income_tax_payee_ineligible(self):
+        """Income tax payee makes ineligible."""
+        eligible, reason, confidence = is_eligible_eshram(age=30, is_income_tax_payee=True)
         assert eligible is False
-        assert "20000" in reason
+        assert "tax" in reason.lower()
 
     def test_eshram_organised_worker_ineligible(self):
         """Organized sector workers ineligible."""
@@ -71,7 +77,7 @@ class TestEShramEligibility:
 
 
 class TestPMKisanEligibility:
-    """Test PM-Kisan scheme eligibility."""
+    """Test PM-Kisan scheme eligibility against official government rules."""
 
     def test_pmkisan_farmer_required(self):
         """Must be farmer."""
@@ -92,10 +98,10 @@ class TestPMKisanEligibility:
         )
         assert eligible is True
 
-    def test_pmkisan_max_land_2_0(self):
-        """2.0 hectare maximum eligible."""
+    def test_pmkisan_land_above_2_0_eligible(self):
+        """2.5 hectares land holding eligible (since June 2019 scheme expansion)."""
         eligible, reason, confidence = is_eligible_pm_kisan(
-            age=30, is_farmer=True, land_holding_hectares=2.0
+            age=30, is_farmer=True, land_holding_hectares=2.5
         )
         assert eligible is True
 
@@ -107,21 +113,21 @@ class TestPMKisanEligibility:
         assert eligible is False
         assert "invalid" in reason.lower()
 
-    def test_pmkisan_land_exceeds_2(self):
-        """Land holdings above 2 hectares ineligible."""
+    def test_pmkisan_govt_employee_ineligible(self):
+        """Serving or retired government employees (non Class IV) excluded."""
         eligible, reason, confidence = is_eligible_pm_kisan(
-            age=30, is_farmer=True, land_holding_hectares=2.5
+            age=30, is_farmer=True, land_holding_hectares=1.0, is_government_employee=True
         )
         assert eligible is False
-        assert "exceeds 2 hectare" in reason
+        assert "government" in reason.lower()
 
-    def test_pmkisan_income_limit(self):
-        """Income above ₹15 lakh makes ineligible."""
+    def test_pmkisan_income_tax_payee_ineligible(self):
+        """Income tax payee excluded."""
         eligible, reason, confidence = is_eligible_pm_kisan(
-            age=30, is_farmer=True, land_holding_hectares=1.0, previous_year_income=2000000
+            age=30, is_farmer=True, land_holding_hectares=1.0, is_income_tax_payee=True
         )
         assert eligible is False
-        assert "₹15 lakh" in reason
+        assert "tax" in reason.lower()
 
     def test_pmkisan_no_age_limit(self):
         """No age limit for PM-Kisan (unlike E-Shram)."""
@@ -147,16 +153,15 @@ class TestMultiSchemeComparison:
         assert results["ranked"][0] == "IGNOAPS"
 
     def test_young_farmer_pmkisan_only(self):
-        """30-year-old farmer eligible for PM-Kisan only."""
+        """30-year-old farmer eligible for PM-Kisan."""
         results = check_all_schemes(
             age=30, is_farmer=True, land_holding_hectares=1.0, has_bpl=False
         )
 
         assert results["PM-Kisan"]["eligible"] is True
         assert results["IGNOAPS"]["eligible"] is False
-        # E-Shram eligible because age in range, but PM-Kisan ranked higher
         assert results["E-Shram"]["eligible"] is True
-        assert results["ranked"][0] in ["PM-Kisan", "E-Shram"]  # Both eligible, either can be first
+        assert results["ranked"][0] in ["PM-Kisan", "E-Shram"]
 
     def test_young_unorganized_worker_eshram(self):
         """25-year-old unorganized worker eligible for E-Shram."""
@@ -193,7 +198,6 @@ class TestMultiSchemeComparison:
             age=72, has_bpl=True, is_farmer=True, land_holding_hectares=1.0
         )
 
-        # First ranked should be eligible
         first_scheme = results["ranked"][0]
         assert results[first_scheme]["eligible"] is True
 
@@ -217,9 +221,9 @@ class TestMultiSchemeComparison:
         """All schemes have official URLs."""
         results = check_all_schemes(age=50)
 
-        assert results["IGNOAPS"]["url"] == "nsap.nic.in"
-        assert results["E-Shram"]["url"] == "e-shram.in"
-        assert results["PM-Kisan"]["url"] == "pmkisan.gov.in"
+        assert "nsap.nic.in" in results["IGNOAPS"]["url"]
+        assert "eshram.gov.in" in results["E-Shram"]["url"]
+        assert "pmkisan.gov.in" in results["PM-Kisan"]["url"]
 
     def test_age_boundary_60(self):
         """Age 60 boundary: eligible for IGNOAPS, not E-Shram."""
@@ -234,21 +238,13 @@ class TestMultiSchemeComparison:
 
         assert results["E-Shram"]["eligible"] is True
 
-    def test_land_boundary_2_0_hectares(self):
-        """Land 2.0 hectares: eligible for PM-Kisan."""
+    def test_land_holding_large_farm(self):
+        """Large land holding (5.0 hectares): eligible for PM-Kisan under current rules."""
         results = check_all_schemes(
-            age=40, is_farmer=True, land_holding_hectares=2.0
+            age=40, is_farmer=True, land_holding_hectares=5.0
         )
 
         assert results["PM-Kisan"]["eligible"] is True
-
-    def test_land_boundary_2_1_hectares(self):
-        """Land 2.1 hectares: not eligible for PM-Kisan."""
-        results = check_all_schemes(
-            age=40, is_farmer=True, land_holding_hectares=2.1
-        )
-
-        assert results["PM-Kisan"]["eligible"] is False
 
     def test_recommendations_helpful(self):
         """Recommendations are helpful and specific."""

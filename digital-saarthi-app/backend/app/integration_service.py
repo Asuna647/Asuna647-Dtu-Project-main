@@ -25,6 +25,11 @@ from app.stt_service import transcribe_audio
 from app.ocr_service import process_document_bytes
 from app.intent_engine import detect_intent
 from app.rule_engine import check_ignoaps
+from app.scheme_rules import (
+    check_all_schemes,
+    is_eligible_eshram,
+    is_eligible_pm_kisan,
+)
 from app.knowledge_base import get_all_schemes, get_scheme_by_id
 
 
@@ -151,12 +156,14 @@ class IntegrationService:
             has_bpl = extracted_data.get("has_bpl", False)
             is_organised_worker = extracted_data.get("is_organised_worker", False)
             is_farmer = extracted_data.get("is_farmer", False)
+            land_holding_hectares = extracted_data.get("land_holding_hectares")
 
             eligibility_results = self.run_all_schemes(
                 age=age,
                 has_bpl=has_bpl,
                 is_organised_worker=is_organised_worker,
                 is_farmer=is_farmer,
+                land_holding_hectares=land_holding_hectares,
             )
 
             # STEP 5: Get source cards for eligible schemes
@@ -208,6 +215,7 @@ class IntegrationService:
         has_bpl: bool = False,
         is_organised_worker: bool = False,
         is_farmer: bool = False,
+        land_holding_hectares: Optional[float] = None,
     ) -> List[EligibilityResult]:
         """
         Check eligibility against all 3 schemes.
@@ -220,6 +228,7 @@ class IntegrationService:
             has_bpl: Below Poverty Line status
             is_organised_worker: EPFO/ESIC covered
             is_farmer: Owns cultivable land
+            land_holding_hectares: Size of land holding in hectares
 
         Returns:
             List of EligibilityResult for each scheme
@@ -267,8 +276,8 @@ class IntegrationService:
             )
 
         try:
-            # PM-KISAN: Requires farmer status
-            pm_kisan_result = self._check_pm_kisan(is_farmer=is_farmer)
+            # PM-KISAN: Requires farmer status and land holding
+            pm_kisan_result = self._check_pm_kisan(is_farmer=is_farmer, land_holding_hectares=land_holding_hectares)
             results.append(pm_kisan_result)
             self._log_audit("PM-Kisan evaluation complete", extra={"eligible": pm_kisan_result.eligible})
         except Exception as e:
@@ -489,116 +498,53 @@ class IntegrationService:
         age: Optional[int] = None,
         is_organised_worker: bool = False,
     ) -> EligibilityResult:
-        """
-        Evaluate E-Shram eligibility.
-
-        E-Shram requires:
-        - Age 18–59 years
-        - Unorganized sector worker (not covered by EPFO/ESIC)
-
-        Args:
-            age: User's age
-            is_organised_worker: Is covered by EPFO/ESIC
-
-        Returns:
-            EligibilityResult for E-Shram
-        """
-        reasons = []
-
+        """Evaluate E-Shram eligibility using canonical scheme rules."""
+        is_elig, reason, conf = is_eligible_eshram(
+            age=age,
+            is_organised_worker=is_organised_worker,
+        )
         if age is None:
-            return EligibilityResult(
-                eligible=False,
-                scheme="E-Shram",
-                verdict="cannot_determine",
-                reasons=["✗ Age missing or unreadable. Cannot determine eligibility."],
-                steps=[],
-                warning="Please provide your age.",
-                confidence=0.0,
-            )
-
-        if age < 0 or age > 120:
-            return EligibilityResult(
-                eligible=False,
-                scheme="E-Shram",
-                verdict="invalid_input",
-                reasons=[f"✗ Invalid age: {age}. Age must be between 0 and 120."],
-                steps=[],
-                warning="Please check your input.",
-                confidence=0.0,
-            )
-
-        age_eligible = 18 <= age <= 59
-        if age_eligible:
-            reasons.append(f"✓ Age {age} is within the required range (18–59 years).")
+            verdict = "cannot_determine"
+        elif age < 0 or age > 120:
+            verdict = "invalid_input"
         else:
-            reasons.append(f"✗ Age {age} is outside the eligible range (18–59 years).")
-
-        organized_eligible = not is_organised_worker
-        if organized_eligible:
-            reasons.append("✓ Not covered by EPFO/ESIC — eligible for E-Shram.")
-        else:
-            reasons.append("✗ Already covered by EPFO/ESIC — ineligible for E-Shram.")
-
-        eligible = age_eligible and organized_eligible
+            verdict = "Eligible for E-Shram" if is_elig else "Not currently eligible"
 
         return EligibilityResult(
-            eligible=eligible,
+            eligible=is_elig,
             scheme="E-Shram",
-            verdict="Eligible for E-Shram" if eligible else "Not currently eligible",
-            reasons=reasons,
+            verdict=verdict,
+            reasons=[reason],
             steps=[
                 "Step 1: Visit https://eshram.gov.in",
                 "Step 2: Click 'Register as a Worker'",
                 "Step 3: Verify Aadhaar and provide occupation details",
                 "Step 4: Complete registration and download your E-Shram card",
-            ] if eligible else [],
-            warning=None if eligible else "Organized sector workers are ineligible.",
-            confidence=1.0,
+            ] if is_elig else [],
+            warning=None if is_elig else "Organized sector workers or those outside 16-59 age range are ineligible.",
+            confidence=conf,
         )
 
-    def _check_pm_kisan(self, is_farmer: bool = False) -> EligibilityResult:
-        """
-        Evaluate PM-Kisan eligibility.
-
-        PM-Kisan requires:
-        - Farmer with cultivable landholding (up to 2 hectares / 5 acres)
-
-        Args:
-            is_farmer: Owns cultivable land
-
-        Returns:
-            EligibilityResult for PM-Kisan
-        """
-        reasons = []
-
-        if not is_farmer:
-            reasons.append("✗ No cultivable landholding — ineligible for PM-Kisan.")
-            return EligibilityResult(
-                eligible=False,
-                scheme="PM-Kisan",
-                verdict="Not currently eligible",
-                reasons=reasons,
-                steps=[],
-                warning="PM-Kisan is for farmer families with cultivable land.",
-                confidence=1.0,
-            )
-
-        reasons.append("✓ Cultivable landholding verified — eligible for PM-Kisan.")
-
+    def _check_pm_kisan(self, is_farmer: bool = False, land_holding_hectares: Optional[float] = None) -> EligibilityResult:
+        """Evaluate PM-Kisan eligibility using canonical scheme rules."""
+        is_elig, reason, conf = is_eligible_pm_kisan(
+            is_farmer=is_farmer,
+            land_holding_hectares=land_holding_hectares,
+        )
         return EligibilityResult(
-            eligible=True,
+            eligible=is_elig,
             scheme="PM-Kisan",
-            verdict="Eligible for PM-Kisan",
-            reasons=reasons,
+            verdict="Eligible for PM-Kisan" if is_elig else "Not currently eligible",
+            reasons=[reason],
             steps=[
                 "Step 1: Visit https://pmkisan.gov.in",
                 "Step 2: Click 'Farmer Corner' → 'New Farmer Registration'",
                 "Step 3: Enter Aadhaar, state, and district",
                 "Step 4: Provide land details and bank account",
                 "Step 5: Receive registration number for tracking",
-            ],
-            warning=None,
-            confidence=1.0,
+            ] if is_elig else [],
+            warning=None if is_elig else "PM-Kisan is for landholding farmer families.",
+            confidence=conf,
         )
 
     def _generate_action_plans(

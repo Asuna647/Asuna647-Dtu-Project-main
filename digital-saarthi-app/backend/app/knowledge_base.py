@@ -70,7 +70,7 @@ IGNOAPS: SchemeRecord = {
     "source": {
         "official_url": "https://nsap.nic.in",
         "department": "Ministry of Rural Development, Government of India",
-        "helpline": "14567",  # Elder helpline
+        "helpline": "14567",  # Official Elder helpline / NSAP helpline
         "last_verified": "2026-09-24",
     },
 }
@@ -82,13 +82,13 @@ ESHRAM: SchemeRecord = {
     "category": "labour",
     "description": (
         "A voluntary registration scheme for informal/unorganized workers. "
-        "Provides access to government social security benefits, accident insurance, and pension schemes."
+        "Provides access to government social security benefits, accident insurance, and worker welfare schemes."
     ),
     "eligibility_criteria": [
-        "Age 18–59 years",
+        "Age 16–59 years",
         "Unorganized sector worker (not covered by EPFO or ESIC)",
-        "Not a government employee",
-        "Not a member of any other social security scheme",
+        "Not an Income Tax Payee",
+        "No mandatory annual income limit for registration",
     ],
     "required_documents": [
         "Aadhaar Card (or any ID for temporary registration)",
@@ -96,10 +96,10 @@ ESHRAM: SchemeRecord = {
         "Bank account details (optional but recommended)",
     ],
     "benefits": [
-        "E-Shram card with unique identity number",
-        "Access to Central government accident insurance (₹2 lakh coverage)",
-        "Eligibility for various state and central government schemes",
-        "Pension contribution credits (depending on other schemes)",
+        "E-Shram card with 12-digit Universal Account Number (UAN)",
+        "Access to Central government accident insurance (₹2 lakh coverage for death/disability)",
+        "Eligibility for various state and central government social security schemes",
+        "Direct benefit transfers during emergency relief programs",
     ],
     "steps": [
         "Step 1: Visit the official E-Shram portal at https://eshram.gov.in",
@@ -109,9 +109,9 @@ ESHRAM: SchemeRecord = {
         "Step 5: Download your E-Shram card from the portal",
     ],
     "source": {
-        "official_url": "https://eshram.gov.in",
+        "official_url": "https://eshram.gov.in/faqs",
         "department": "Ministry of Labour & Employment, Government of India",
-        "helpline": "14434",
+        "helpline": "14434",  # Official E-Shram helpline
         "last_verified": "2026-09-24",
     },
 }
@@ -122,19 +122,19 @@ PM_KISAN: SchemeRecord = {
     "short_name": "PM-Kisan",
     "category": "agriculture",
     "description": (
-        "A central government scheme providing direct cash transfer to farmer families. "
-        "Aims to support farmers' income and reduce their financial burden."
+        "A central government scheme providing direct cash transfer to landholding farmer families. "
+        "Extended to all landholding farmers (irrespective of land size) since June 2019."
     ),
     "eligibility_criteria": [
-        "Farmer family with cultivable landholding",
-        "Landholding up to 2 hectares (5 acres)",
+        "Farmer family with cultivable landholding (> 0 hectares)",
         "Indian citizen",
-        "Not receiving income tax or government salary",
+        "Not an institutional landholder",
+        "Not in exclusion categories (income tax payee, government employee except Class IV, pensioner >= ₹10k/mo, registered professional)",
     ],
     "required_documents": [
         "Aadhaar Card",
-        "Land ownership proof or lease deed",
-        "Bank account details (preferably joint if joint ownership)",
+        "Land ownership proof or land revenue records",
+        "Bank account details",
         "Mobile number linked to Aadhaar",
     ],
     "benefits": [
@@ -150,9 +150,9 @@ PM_KISAN: SchemeRecord = {
         "Step 5: Submit and receive registration number for tracking",
     ],
     "source": {
-        "official_url": "https://pmkisan.gov.in",
+        "official_url": "https://www.pmkisan.gov.in/",
         "department": "Ministry of Agriculture & Farmers Welfare, Government of India",
-        "helpline": "155261",
+        "helpline": "155261",  # Official PM-Kisan helpline
         "last_verified": "2026-09-24",
     },
 }
@@ -175,6 +175,6 @@ def get_scheme_by_id(scheme_id: str) -> Optional[SchemeRecord]:
     Returns the scheme record or None if not found.
     """
     for scheme in SCHEMES_DB:
-        if scheme["id"].lower() == scheme_id.lower():
+        if scheme["id"].lower() == scheme_id.lower() or scheme["short_name"].lower() == scheme_id.lower():
             return scheme
     return None

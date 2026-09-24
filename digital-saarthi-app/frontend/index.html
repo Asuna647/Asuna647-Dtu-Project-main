@@ -855,6 +855,15 @@
                 </button>
                 <div id="document-status" style="margin-top: 1rem;"></div>
             </div>
+
+            <!-- New OCR Confirmation Section -->
+            <div id="ocr-confirmation-section" style="display: none; background: #fffbeb; padding: 2rem; border-radius: 12px; margin-top: 2rem; border: 1px solid #f59e0b;">
+                <h3>Detected Values - Please confirm or edit</h3>
+                <div id="ocr-confirmation-fields" style="margin: 1rem 0;"></div>
+                <button class="btn btn-primary" id="confirm-ocr-btn" onclick="confirmDocument()">
+                    ✓ Confirm & Check Eligibility
+                </button>
+            </div>
         </section>
 
         <!-- Results Section -->
@@ -1098,7 +1107,7 @@
                 const isFarmer = occupation === 'farmer';
                 const isOrganizedWorker = occupation === 'organized_worker' || occupation === 'government_employee';
 
-                const response = await fetch(`${API_BASE}/check_all_schemes`, {
+                let response = await fetch(`${API_BASE}/api/check-all-schemes`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1116,6 +1125,26 @@
                 });
 
                 if (!response.ok) {
+                    // Fallback to legacy path
+                    response = await fetch(`${API_BASE}/check_all_schemes`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            age: age,
+                            has_bpl: bpl,
+                            is_organised_worker: isOrganizedWorker,
+                            is_farmer: isFarmer,
+                            land_holding_hectares: land,
+                            occupation: occupation,
+                            annual_income: income,
+                            is_government_employee: occupation === 'government_employee'
+                        })
+                    });
+                }
+
+                if (!response.ok) {
                     throw new Error(`API error: ${response.status}`);
                 }
 
@@ -1131,26 +1160,42 @@
         }
 
         // ============ Display Results ============
-        function displayResults(results, age, bpl) {
+        function displayResults(dataResponse, age, bpl) {
             const resultsSection = document.getElementById('results');
             const container = document.getElementById('results-container');
             const summary = document.getElementById('results-summary');
 
-            // Create summary
-            const eligibleCount = Object.values(results).filter(r => r.eligible).length;
-            const totalSchemes = Object.keys(results).length;
+            // Handle both unified response format {schemes: {...}, summary: {...}} and flat dict
+            const schemesObj = dataResponse.schemes ? dataResponse.schemes : dataResponse;
+
+            const helplineMap = {
+                'IGNOAPS': '1800-180-1111',
+                'ESHRAM': '1800-110-005',
+                'E-SHRAM': '1800-110-005',
+                'PM_KISAN': '1800-270-0888',
+                'PM-KISAN': '1800-270-0888'
+            };
+
+            // Calculate eligible count accurately ignoring summary/metadata keys
+            const metadataKeys = ['ranked', 'summary', 'sources', 'recommendation', 'eligible_count'];
+            const schemeEntries = Object.entries(schemesObj).filter(([k, v]) =>
+                typeof v === 'object' && v !== null && v.eligible !== undefined && !metadataKeys.includes(k)
+            );
+            const eligibleCount = schemeEntries.filter(([k, v]) => v.eligible).length;
+            const totalSchemes = schemeEntries.length;
 
             summary.innerHTML = `Based on your information (Age: ${age}, BPL: ${bpl ? 'Yes' : 'No'}),
                 you are eligible for <strong>${eligibleCount} out of ${totalSchemes}</strong> scheme(s).`;
 
             // Display each scheme result
-            container.innerHTML = Object.entries(results).map(([schemeId, data]) => {
-                const statusClass = data.eligible ? 'eligible' : (data.confidence > 0.5 ? 'unknown' : 'ineligible');
-                const statusBadge = data.eligible ? 'badge-eligible' : (data.confidence > 0.5 ? 'badge-unknown' : 'badge-ineligible');
-                const statusText = data.eligible ? t('eligible') : (data.confidence > 0.5 ? t('unknown') : t('ineligible'));
+            container.innerHTML = schemeEntries.map(([schemeId, data]) => {
+                const statusClass = data.eligible ? 'eligible' : (data.confidence > 0.5 ? 'ineligible' : 'unknown');
+                const statusBadge = data.eligible ? 'badge-eligible' : (data.confidence > 0.5 ? 'badge-ineligible' : 'badge-unknown');
+                const statusText = data.eligible ? t('eligible') : (data.confidence > 0.5 ? t('ineligible') : t('unknown'));
 
                 const schemeName = schemeId.toUpperCase().replace(/_/g, '-');
-                const explanation = data.explanation || 'No additional information available.';
+                const explanation = data.reason || data.explanation || 'No additional information available.';
+                const helpline = data.helpline || helplineMap[schemeName] || '1800-180-1111';
 
                 return `
                     <div class="result-card ${statusClass}">
@@ -1170,7 +1215,7 @@
                         ` : ''}
 
                         <div class="helpline">
-                            📞 Get More Info: 1800-180-1111
+                            📞 Helpline: ${helpline}
                         </div>
                     </div>
                 `;
@@ -1228,13 +1273,21 @@
                 </div>`;
 
                 const formData = new FormData();
-                formData.append('audio', audioBlob);
-                formData.append('language', currentLanguage);
+                formData.append('file', audioBlob, 'voice.wav');
+                formData.append('language_hint', currentLanguage);
 
-                const response = await fetch(`${API_BASE}/voice_query`, {
+                let response = await fetch(`${API_BASE}/api/voice-upload`, {
                     method: 'POST',
                     body: formData
                 });
+
+                if (!response.ok) {
+                    // Fallback to legacy audio endpoint
+                    response = await fetch(`${API_BASE}/voice_query`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
 
                 if (!response.ok) {
                     throw new Error('Failed to process voice input');
@@ -1242,17 +1295,20 @@
 
                 const data = await response.json();
 
-                // Auto-fill form from extracted data
+                // Auto-fill form from extracted data if returned or parsed from intent
                 if (data.age) document.getElementById('age').value = data.age;
-                if (data.bpl_status !== undefined) {
+                if (data.has_bpl !== undefined) {
+                    document.getElementById('bpl').value = data.has_bpl ? 'yes' : 'no';
+                } else if (data.bpl_status !== undefined) {
                     document.getElementById('bpl').value = data.bpl_status ? 'yes' : 'no';
                 }
                 if (data.occupation) document.getElementById('occupation').value = data.occupation;
 
-                statusDiv.innerHTML = `<div class="status-message status-success">✓ Voice processed successfully! Form auto-filled.</div>`;
+                const transNotice = data.transcribed_text ? `<br><em>"${data.transcribed_text}"</em>` : '';
+                statusDiv.innerHTML = `<div class="status-message status-success">✓ Voice processed successfully! ${transNotice}</div>`;
 
-                // Auto-check eligibility
-                setTimeout(() => checkEligibility(), 1000);
+                // Switch to form for review before checking eligibility
+                document.querySelector('[data-method="form"]').click();
             } catch (error) {
                 statusDiv.innerHTML = `<div class="status-message status-error">Error processing voice: ${error.message}</div>`;
             }
@@ -1275,13 +1331,20 @@
                 </div>`;
 
                 const formData = new FormData();
-                formData.append('document', fileInput.files[0]);
-                formData.append('language', currentLanguage);
+                formData.append('file', fileInput.files[0]);
 
-                const response = await fetch(`${API_BASE}/process_document`, {
+                let response = await fetch(`${API_BASE}/api/scan-document`, {
                     method: 'POST',
                     body: formData
                 });
+
+                if (!response.ok) {
+                    // Fallback to legacy route if needed
+                    response = await fetch(`${API_BASE}/process_document`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
 
                 if (!response.ok) {
                     throw new Error('Failed to process document');
@@ -1291,15 +1354,22 @@
 
                 // Auto-fill form from extracted data
                 if (data.age) document.getElementById('age').value = data.age;
-                if (data.bpl_status !== undefined) {
+                if (data.has_bpl !== undefined) {
+                    document.getElementById('bpl').value = data.has_bpl ? 'yes' : 'no';
+                } else if (data.bpl_status !== undefined) {
                     document.getElementById('bpl').value = data.bpl_status ? 'yes' : 'no';
                 }
 
-                statusDiv.innerHTML = `<div class="status-message status-success">✓ Document processed! Form auto-filled.</div>`;
+                const warningBanner = data.warning ? `<p style="color: #c0392b; font-size: 0.9rem; margin-top: 0.5rem;">⚠️ ${data.warning}</p>` : '';
 
-                // Switch to form and auto-check
+                statusDiv.innerHTML = `<div class="status-message status-success">
+                    ✓ Document scanned! Extracted information filled into form.<br>
+                    <strong>Please review the auto-filled values in the form and click "Check Eligibility" to verify.</strong>
+                    ${warningBanner}
+                </div>`;
+
+                // Switch to manual form so user can review and confirm values (User-in-the-Loop)
                 document.querySelector('[data-method="form"]').click();
-                setTimeout(() => checkEligibility(), 1000);
             } catch (error) {
                 statusDiv.innerHTML = `<div class="status-message status-error">Error processing document: ${error.message}</div>`;
             }

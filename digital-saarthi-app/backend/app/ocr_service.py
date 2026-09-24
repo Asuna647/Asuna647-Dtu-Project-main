@@ -193,18 +193,23 @@ def parse_aadhaar_bpl_text(raw_text: str) -> Dict[str, Any]:
                 break
 
     # 4. BPL / Ration Card Status Extraction
-    explicit_bpl_keywords = ['bpl', 'below poverty line', 'antyodaya', 'aay', 'phh', 'गरीबी रेखा', 'बीपीएल']
+    explicit_bpl_keywords = ['bpl', 'below poverty line', 'antyodaya', 'aay', 'phh', 'गरीबी रेखा', 'बीपीएल', 'अन्त्योदय']
     general_ration_keywords = ['ration card', 'खाद्य सुरक्षा', 'राशन कार्ड']
 
     raw_lower = raw_text.lower()
+    bpl_status = "BPL_UNKNOWN"
     if any(kw in raw_lower for kw in explicit_bpl_keywords):
         has_bpl = True
+        bpl_status = "BPL_CONFIRMED"
         bpl_confidence = 0.90
     elif any(kw in raw_lower for kw in general_ration_keywords):
-        has_bpl = True
-        bpl_confidence = 0.60
+        # General ration card is UNCERTAIN, do NOT return True!
+        has_bpl = False
+        bpl_status = "BPL_UNCERTAIN"
+        bpl_confidence = 0.40
     else:
         has_bpl = False
+        bpl_status = "BPL_UNKNOWN"
         bpl_confidence = 0.0
 
     # 5. Calculate Overall Document Confidence
@@ -221,6 +226,7 @@ def parse_aadhaar_bpl_text(raw_text: str) -> Dict[str, Any]:
         "age": extracted_age,
         "gender": extracted_gender,
         "has_bpl": has_bpl,
+        "bpl_status": bpl_status,
         "name_confidence": name_confidence,
         "dob_confidence": dob_confidence,
         "age_confidence": age_confidence,
@@ -248,12 +254,19 @@ def process_document_bytes(file_bytes: bytes, filename: str, content_type: str) 
         # 4. PII Sanitization for safe client preview (truncate and mask Aadhaar numbers)
         sanitized_text = sanitize_pii(raw_text)[:500]
 
+        warning_msg = None
+        if structured["bpl_status"] == "BPL_UNCERTAIN":
+            warning_msg = "General Ration Card detected, but BPL status is UNCERTAN. Please confirm if you hold a BPL Ration Card."
+        elif structured["overall_confidence"] < 0.5:
+            warning_msg = "Low OCR confidence. Please verify all fields carefully."
+
         return {
             "name": structured["name"],
             "age": structured["age"],
             "dob": structured["dob"],
             "gender": structured["gender"],
             "has_bpl": structured["has_bpl"],
+            "bpl_status": structured["bpl_status"],
             "confidence": structured["overall_confidence"],
             "field_confidences": {
                 "name": structured["name_confidence"],
@@ -264,7 +277,9 @@ def process_document_bytes(file_bytes: bytes, filename: str, content_type: str) 
             },
             "raw_text": sanitized_text,
             "needs_confirmation": True,
+            "warning": warning_msg,
         }
+
     except ValueError as e:
         raise
     except Exception as e:

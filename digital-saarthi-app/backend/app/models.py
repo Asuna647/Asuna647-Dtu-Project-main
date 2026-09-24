@@ -17,6 +17,7 @@ class EligibilityCheckRequest(BaseModel):
     has_bpl: bool = Field(False, description="Possesses Below Poverty Line card")
     is_organised_worker: bool = Field(False, description="EPFO/ESIC covered worker")
     is_farmer: bool = Field(False, description="Owns cultivable land")
+    land_holding_hectares: Optional[float] = Field(None, ge=0.0, description="Land holding in hectares")
 
     @field_validator("age")
     @classmethod
@@ -24,6 +25,33 @@ class EligibilityCheckRequest(BaseModel):
         if v is not None and (v < 0 or v > 120):
             raise ValueError("Age must be between 0 and 120")
         return v
+
+
+class MultiSchemeCheckRequest(BaseModel):
+    """Payload sent by frontend to check eligibility for all schemes at once."""
+    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
+    has_bpl: bool = Field(False, description="BPL card holder")
+    is_farmer: bool = Field(False, description="Farmer status")
+    is_organised_worker: bool = Field(False, description="Organized sector worker")
+    land_holding_hectares: Optional[float] = Field(0.0, ge=0.0, description="Land holding in hectares")
+    occupation: Optional[str] = Field(None, description="Occupation description")
+    annual_income: Optional[int] = Field(None, ge=0, description="Annual income in rupees")
+    is_government_employee: bool = Field(False, description="Government employee status")
+
+
+class SchemeEligibilityResult(BaseModel):
+    eligible: bool = Field(..., description="Eligibility determination")
+    confidence: float = Field(1.0, ge=0.0, le=1.0, description="Confidence score")
+    reason: str = Field(..., description="Detailed explanation")
+    benefit: Optional[str] = Field(None, description="Benefit amount/details")
+    explanation: Optional[str] = Field(None, description="Extended simple language explanation")
+    helpline: Optional[str] = Field(None, description="Scheme-specific helpline")
+
+
+class MultiSchemeCheckResponse(BaseModel):
+    schemes: Dict[str, SchemeEligibilityResult] = Field(..., description="Scheme ID to result mapping")
+    summary: Dict[str, Any] = Field(..., description="Eligible count and recommendations")
+    sources: List[Dict[str, str]] = Field(default_factory=list, description="Government source attributions")
 
 
 class VoiceQueryRequest(BaseModel):
@@ -42,6 +70,7 @@ class DocumentScanResponse(BaseModel):
     dob: Optional[str] = None
     gender: Optional[str] = None
     has_bpl: bool = False
+    bpl_status: str = Field("BPL_UNKNOWN", description="BPL status: BPL_CONFIRMED, BPL_UNCERTAIN, BPL_UNKNOWN")
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="Overall document scan confidence")
     field_confidences: Optional[dict] = Field(default_factory=dict, description="Per-field confidence scores")
     raw_text: str = Field("", description="Sanitized extracted text (PII redacted/truncated)")
@@ -51,9 +80,16 @@ class DocumentScanResponse(BaseModel):
 
 class DocumentConfirmationRequest(BaseModel):
     """Payload sent by frontend when user confirms or edits OCR-extracted fields."""
-    scheme: SchemeType = Field(SchemeType.IGNOAPS, description="Target scheme identifier")
-    confirmed_age: Optional[int] = Field(None, ge=0, le=120)
-    confirmed_has_bpl: bool = Field(False)
+    scheme: Optional[SchemeType] = Field(None, description="Target scheme identifier (if checking single scheme)")
+    confirmed_name: Optional[str] = Field(None, description="Confirmed user name")
+    confirmed_age: Optional[int] = Field(None, ge=0, le=120, description="Confirmed user age")
+    confirmed_has_bpl: bool = Field(False, description="Confirmed BPL status")
+    is_farmer: bool = Field(False, description="Farmer status")
+    is_organised_worker: bool = Field(False, description="Organized sector worker status")
+    land_holding_hectares: Optional[float] = Field(0.0, ge=0.0, description="Land holding in hectares")
+    occupation: Optional[str] = Field(None, description="Occupation description")
+    annual_income: Optional[int] = Field(None, ge=0, description="Annual income")
+    is_government_employee: bool = Field(False, description="Government employee status")
     document_type: Optional[str] = Field("Aadhaar", description="Type of document scanned")
 
 
