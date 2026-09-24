@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Saarthi - Government Eligibility Assistant</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Cultural aesthetic: Indian government + modern tech */
+            --primary: #d4764f;      /* Warm terracotta (Ashoka heritage) */
+            --secondary: #1e3a8a;    /* Deep navy (Saffron blue variant) */
+            --accent: #84b74a;       /* Vibrant green (hope) */
+            --warm-cream: #faf8f3;   /* Aged paper */
+            --dark-slate: #0f172a;   /* Deep background */
+            --text-dark: #1e293b;
+            --text-light: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            --spacing: 1rem;
+            --transition: cubic-bezier(0.23, 1, 0.320, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: linear-gradient(135deg, var(--warm-cream) 0%, #f1e8db 50%, var(--warm-cream) 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Subtle animated background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(212, 118, 79, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(30, 58, 138, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Typography hierarchy */
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.1;
+            color: var(--secondary);
+            margin-bottom: var(--spacing);
+            letter-spacing: -1px;
+            animation: fadeInDown 0.8s var(--transition);
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--secondary);
+            margin: 2rem 0 1rem 0;
+        }
+
+        h3 {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        p {
+            color: var(--text-dark);
+            opacity: 0.85;
+            margin-bottom: 1rem;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s var(--transition);
+            border-bottom: 2px solid transparent;
+        }
+
+        a:hover {
+            color: var(--secondary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes microwave {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.1); opacity: 0; }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #2d5a96 100%);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            animation: fadeInDown 0.8s var(--transition);
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .tagline {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            max-width: 500px;
+            margin-top: 0.5rem;
+        }
+
+        /* Navigation */
+        nav {
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            justify-content: center;
+        }
+
+        nav a {
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 0.95rem;
+            border-bottom: 3px solid transparent;
+            padding-bottom: 0.25rem;
+            transition: all 0.3s var(--transition);
+        }
+
+        nav a:hover {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Main content */
+        main {
+            margin-bottom: 4rem;
+        }
+
+        /* Input section */
+        .input-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s var(--transition) 0.2s both;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.3s var(--transition);
+            background: #f8fafc;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(212, 118, 79, 0.1);
+        }
+
+        input::placeholder {
+            color: var(--text-light);
+        }
+
+        /* Button */
+        .btn {
+            display: inline-block;
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s var(--transition);
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, #c85a38 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(212, 118, 79, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 118, 79, 0.4);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #152a5f;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(30, 58, 138, 0.4);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 15px rgba(132, 183, 74, 0.3);
+        }
+
+        .btn-accent:hover:not(:disabled) {
+            background: #73a63e;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(132, 183, 74, 0.4);
+        }
+
+        /* Input method tabs */
+        .input-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .method-btn {
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .method-btn:hover {
+            border-color: var(--primary);
+            background: #faf8f3;
+            transform: translateY(-2px);
+        }
+
+        .method-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Results section */
+        .results-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--primary);
+            animation: slideInLeft 0.8s var(--transition);
+        }
+
+        .result-card.eligible {
+            border-left-color: var(--success);
+            background: linear-gradient(135deg, white 0%, #f0fdf4 100%);
+        }
+
+        .result-card.ineligible {
+            border-left-color: var(--warning);
+            background: linear-gradient(135deg, white 0%, #fffbeb 100%);
+        }
+
+        .result-card.unknown {
+            border-left-color: var(--text-light);
+            background: linear-gradient(135deg, white 0%, #f1f5f9 100%);
+        }
+
+        .scheme-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+        }
+
+        .eligibility-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .badge-eligible {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-ineligible {
+            background: #fed7aa;
+            color: #92400e;
+        }
+
+        .badge-unknown {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .scheme-detail {
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-dark);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            color: var(--text-light);
+            margin-left: 0.5rem;
+        }
+
+        .reason-text {
+            background: rgba(212, 118, 79, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 3px solid var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .helpline {
+            background: var(--accent);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* Scheme comparison */
+        .comparison-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s var(--transition) 0.4s both;
+        }
+
+        .schemes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .scheme-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scheme-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(212, 118, 79, 0.15);
+        }
+
+        .scheme-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s var(--transition);
+        }
+
+        .scheme-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .scheme-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Language switcher */
+        .language-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 1000;
+        }
+
+        .lang-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s var(--transition);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .lang-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Loading indicator */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(212, 118, 79, 0.2);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: rotate 0.8s linear infinite;
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 2rem;
+            animation: fadeInUp 0.3s var(--transition);
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 3px solid var(--danger);
+        }
+
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+            border-left: 3px solid var(--success);
+        }
+
+        .voice-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--secondary);
+            color: white;
+            padding: 3rem 0 1rem;
+            margin-top: 4rem;
+            border-top: 4px solid var(--accent);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-section a {
+            color: rgba(255, 255, 255, 0.8);
+            border-bottom-color: rgba(132, 183, 74, 0.5);
+        }
+
+        .footer-section a:hover {
+            color: white;
+            border-bottom-color: var(--accent);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+            text-align: center;
+            opacity: 0.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            nav ul {
+                flex-wrap: wrap;
+                gap: 1rem;
+                padding: 0 1rem;
+            }
+
+            .schemes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .input-methods {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                padding: 2rem 0;
+            }
+
+            header::after {
+                width: 250px;
+                height: 250px;
+                right: -50px;
+            }
+
+            .language-switcher {
+                top: 10px;
+                right: 10px;
+            }
+        }
+
+        /* Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* Focus visible for keyboard nav */
+        *:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <button class="lang-btn active" data-lang="en" aria-label="Switch to English">EN</button>
+        <button class="lang-btn" data-lang="hi" aria-label="Switch to Hindi">हि</button>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <div class="logo-icon">🇮🇳</div>
+                <div>
+                    <div>Digital Saarthi</div>
+                    <div class="tagline">सरकारी योजनाएं हर नागरिक के लिए</div>
+                </div>
+            </div>
+            <p class="tagline" style="margin: 1rem 0 0 0;">Government Schemes Made Accessible</p>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <ul>
+            <li><a href="#check">Check Eligibility</a></li>
+            <li><a href="#schemes">Our Schemes</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#help">Help & Support</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Input Section -->
+        <section id="check" class="input-section">
+            <h2>Check Your Eligibility</h2>
+            <p>Choose how you'd like to provide your information</p>
+
+            <div class="input-methods">
+                <button class="method-btn active" data-method="form">📝 Manual Form</button>
+                <button class="method-btn" data-method="voice">🎤 Voice Input</button>
+                <button class="method-btn" data-method="document">📄 Document</button>
+            </div>
+
+            <!-- Form Input -->
+            <div id="form-input">
+                <div class="input-group">
+                    <label for="age">Your Age</label>
+                    <input type="number" id="age" placeholder="Enter your age" min="0" max="120" aria-label="Age">
+                </div>
+
+                <div class="input-group">
+                    <label for="bpl">BPL (Below Poverty Line) Status</label>
+                    <select id="bpl" aria-label="BPL Status">
+                        <option value="">Select...</option>
+                        <option value="yes">Yes, I'm Below Poverty Line</option>
+                        <option value="no">No, I'm Above Poverty Line</option>
+                        <option value="unknown">Not Sure</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="occupation">Occupation Type</label>
+                    <select id="occupation" aria-label="Occupation">
+                        <option value="">Select...</option>
+                        <option value="farmer">Farmer</option>
+                        <option value="unorganized_worker">Unorganized Worker (Street vendor, laborer, etc.)</option>
+                        <option value="government_employee">Government Employee</option>
+                        <option value="organized_worker">Organized Sector Worker (has ESIC/EPF)</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="land-group" style="display: none;">
+                    <label for="land">Land Holding (in hectares)</label>
+                    <input type="number" id="land" placeholder="0" min="0" max="50" step="0.1" aria-label="Land holding">
+                </div>
+
+                <div class="input-group" id="income-group">
+                    <label for="income">Annual Income (in ₹)</label>
+                    <input type="number" id="income" placeholder="0" min="0" step="1000" aria-label="Annual income">
+                </div>
+
+                <button class="btn btn-primary" onclick="checkEligibility()" id="check-btn">
+                    ✓ Check Eligibility
+                </button>
+            </div>
+
+            <!-- Voice Input -->
+            <div id="voice-input" style="display: none;">
+                <p style="margin-bottom: 1.5rem; color: var(--text-light);">Speak your details in English or Hindi. Example: "I'm 72 years old and below poverty line"</p>
+                <button class="btn btn-primary" id="voice-btn" onclick="startVoiceInput()">
+                    🎙️ Start Recording
+                </button>
+                <div id="voice-status" style="margin-top: 1rem;"></div>
+            </div>
+
+            <!-- Document Input -->
+            <div id="document-input" style="display: none;">
+                <p style="margin-bottom: 1.5rem; color: var(--text-light);">Upload your government ID (Aadhaar, BPL card, etc.)</p>
+                <input type="file" id="document" accept="image/*,.pdf" aria-label="Upload document">
+                <button class="btn btn-primary" onclick="processDocument()" style="margin-top: 1rem;">
+                    📤 Process Document
+                </button>
+                <div id="document-status" style="margin-top: 1rem;"></div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" style="display: none;">
+            <h2>Your Eligibility Results</h2>
+            <p id="results-summary" style="margin-bottom: 2rem;"></p>
+            <div class="results-section" id="results-container"></div>
+        </section>
+
+        <!-- Schemes Overview -->
+        <section id="schemes" class="comparison-section">
+            <h2>Our Government Schemes</h2>
+            <p>We help you check eligibility for these major Indian government welfare programs</p>
+
+            <div class="schemes-grid">
+                <!-- IGNOAPS -->
+                <div class="scheme-card">
+                    <div class="scheme-icon">👴</div>
+                    <h3>IGNOAPS</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">
+                        Indira Gandhi National Old Age Pension Scheme
+                    </p>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Who:</span>
+                        <span class="detail-value">60+ years & BPL</span>
+                    </div>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Benefit:</span>
+                        <span class="detail-value">₹500/month (central)</span>
+                    </div>
+                    <div class="helpline">
+                        📞 1800-180-1111
+                    </div>
+                </div>
+
+                <!-- E-Shram -->
+                <div class="scheme-card">
+                    <div class="scheme-icon">👷</div>
+                    <h3>E-Shram</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">
+                        Registered Unorganized Workers
+                    </p>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Who:</span>
+                        <span class="detail-value">18-59 years, unorganized</span>
+                    </div>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Benefit:</span>
+                        <span class="detail-value">Insurance (₹2-3 lakhs)</span>
+                    </div>
+                    <div class="helpline">
+                        📞 1800-110-005
+                    </div>
+                </div>
+
+                <!-- PM-Kisan -->
+                <div class="scheme-card">
+                    <div class="scheme-icon">🌾</div>
+                    <h3>PM-Kisan</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">
+                        Pradhan Mantri Kisan Samman Nidhi
+                    </p>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Who:</span>
+                        <span class="detail-value">Farmers, land ≤2 hectares</span>
+                    </div>
+                    <div class="scheme-detail">
+                        <span class="detail-label">Benefit:</span>
+                        <span class="detail-value">₹6,000/year</span>
+                    </div>
+                    <div class="helpline">
+                        📞 1800-270-0888
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section id="how-it-works" class="comparison-section">
+            <h2>How It Works</h2>
+            <div class="schemes-grid">
+                <div class="scheme-card">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">1️⃣</div>
+                    <h3>Provide Your Details</h3>
+                    <p>Use your voice, upload documents, or fill the form. We understand Hindi and English.</p>
+                </div>
+                <div class="scheme-card">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">2️⃣</div>
+                    <h3>We Check Eligibility</h3>
+                    <p>Our system analyzes government rules to determine what you qualify for accurately.</p>
+                </div>
+                <div class="scheme-card">
+                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">3️⃣</div>
+                    <h3>Get Results & Next Steps</h3>
+                    <p>Clear explanation of benefits and detailed guidance on how to apply for each scheme.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h3>About Digital Saarthi</h3>
+                    <p>Making Indian government schemes accessible to every citizen through voice, documents, and simple language. No fees, 100% free service.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Schemes</h3>
+                    <ul>
+                        <li><a href="#schemes">IGNOAPS - Old Age Pension</a></li>
+                        <li><a href="#schemes">E-Shram - Worker Welfare</a></li>
+                        <li><a href="#schemes">PM-Kisan - Farmer Support</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul>
+                        <li><a href="#help">Help & FAQ</a></li>
+                        <li><a href="#help">Contact Us</a></li>
+                        <li><a href="#help">Government Helplines</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Digital Saarthi. Made with 💚 for India.</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">सरकारी योजनाएं हर नागरिक के लिए • Government Schemes for All</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ============ Configuration ============
+        const API_BASE = 'http://localhost:8000';
+        let currentLanguage = 'en';
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // ============ Language Management ============
+        const i18n = {
+            en: {
+                checking: 'Checking eligibility...',
+                error: 'Error checking eligibility',
+                eligible: 'You are eligible',
+                ineligible: 'You are not eligible',
+                unknown: 'Cannot determine eligibility',
+                reason: 'Reason',
+                benefit: 'Monthly Benefit',
+                next_steps: 'Next Steps',
+                apply: 'How to Apply',
+                recording: 'Recording... (click to stop)',
+                processing: 'Processing document...',
+            },
+            hi: {
+                checking: 'पात्रता की जांच की जा रही है...',
+                error: 'पात्रता की जांच में त्रुटि',
+                eligible: 'आप पात्र हैं',
+                ineligible: 'आप पात्र नहीं हैं',
+                unknown: 'पात्रता निर्धारित नहीं की जा सकी',
+                reason: 'कारण',
+                benefit: 'मासिक लाभ',
+                next_steps: 'अगले कदम',
+                apply: 'आवेदन कैसे करें',
+                recording: 'रिकॉर्डिंग... (रोकने के लिए क्लिक करें)',
+                processing: 'दस्तावेज़ की प्रक्रिया की जा रही है...',
+            }
+        };
+
+        const t = (key) => i18n[currentLanguage][key] || i18n['en'][key];
+
+        // ============ Language Switching ============
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentLanguage = e.target.dataset.lang;
+                console.log('Language switched to:', currentLanguage);
+            });
+        });
+
+        // ============ Input Method Switching ============
+        document.querySelectorAll('.method-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const method = e.target.dataset.method;
+                document.getElementById('form-input').style.display = method === 'form' ? 'block' : 'none';
+                document.getElementById('voice-input').style.display = method === 'voice' ? 'block' : 'none';
+                document.getElementById('document-input').style.display = method === 'document' ? 'block' : 'none';
+            });
+        });
+
+        // ============ Occupation Change Handler ============
+        document.getElementById('occupation')?.addEventListener('change', (e) => {
+            const landGroup = document.getElementById('land-group');
+            if (e.target.value === 'farmer') {
+                landGroup.style.display = 'block';
+            } else {
+                landGroup.style.display = 'none';
+            }
+        });
+
+        // ============ Form Validation ============
+        function validateFormInputs() {
+            const age = document.getElementById('age').value;
+            const bpl = document.getElementById('bpl').value;
+            const occupation = document.getElementById('occupation').value;
+
+            if (!age || !bpl || !occupation) {
+                alert('Please fill in all required fields');
+                return false;
+            }
+
+            const ageNum = parseInt(age);
+            if (ageNum < 0 || ageNum > 120) {
+                alert('Please enter a valid age');
+                return false;
+            }
+
+            return true;
+        }
+
+        // ============ Main Eligibility Check ============
+        async function checkEligibility() {
+            if (!validateFormInputs()) return;
+
+            const btn = document.getElementById('check-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ ' + t('checking');
+
+            try {
+                const age = parseInt(document.getElementById('age').value);
+                const bpl = document.getElementById('bpl').value === 'yes';
+                const occupation = document.getElementById('occupation').value;
+                const land = document.getElementById('land')?.value ? parseFloat(document.getElementById('land').value) : 0;
+                const income = document.getElementById('income')?.value ? parseInt(document.getElementById('income').value) : 0;
+
+                // Determine if farmer and if organized worker
+                const isFarmer = occupation === 'farmer';
+                const isOrganizedWorker = occupation === 'organized_worker' || occupation === 'government_employee';
+
+                const response = await fetch(`${API_BASE}/check_all_schemes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        age: age,
+                        has_bpl: bpl,
+                        is_organised_worker: isOrganizedWorker,
+                        is_farmer: isFarmer,
+                        land_holding_hectares: land,
+                        occupation: occupation,
+                        annual_income: income,
+                        is_government_employee: occupation === 'government_employee'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const results = await response.json();
+                displayResults(results, age, bpl);
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(t('error') + ': ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✓ Check Eligibility';
+            }
+        }
+
+        // ============ Display Results ============
+        function displayResults(results, age, bpl) {
+            const resultsSection = document.getElementById('results');
+            const container = document.getElementById('results-container');
+            const summary = document.getElementById('results-summary');
+
+            // Create summary
+            const eligibleCount = Object.values(results).filter(r => r.eligible).length;
+            const totalSchemes = Object.keys(results).length;
+
+            summary.innerHTML = `Based on your information (Age: ${age}, BPL: ${bpl ? 'Yes' : 'No'}),
+                you are eligible for <strong>${eligibleCount} out of ${totalSchemes}</strong> scheme(s).`;
+
+            // Display each scheme result
+            container.innerHTML = Object.entries(results).map(([schemeId, data]) => {
+                const statusClass = data.eligible ? 'eligible' : (data.confidence > 0.5 ? 'unknown' : 'ineligible');
+                const statusBadge = data.eligible ? 'badge-eligible' : (data.confidence > 0.5 ? 'badge-unknown' : 'badge-ineligible');
+                const statusText = data.eligible ? t('eligible') : (data.confidence > 0.5 ? t('unknown') : t('ineligible'));
+
+                const schemeName = schemeId.toUpperCase().replace(/_/g, '-');
+                const explanation = data.explanation || 'No additional information available.';
+
+                return `
+                    <div class="result-card ${statusClass}">
+                        <div class="scheme-name">${schemeName}</div>
+                        <span class="eligibility-badge ${statusBadge}">${statusText}</span>
+
+                        <div class="reason-text">
+                            <strong>${t('reason')}:</strong><br>
+                            ${explanation}
+                        </div>
+
+                        ${data.benefit ? `
+                            <div class="scheme-detail">
+                                <span class="detail-label">${t('benefit')}:</span>
+                                <span class="detail-value">${data.benefit}</span>
+                            </div>
+                        ` : ''}
+
+                        <div class="helpline">
+                            📞 Get More Info: 1800-180-1111
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            resultsSection.style.display = 'block';
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ============ Voice Input ============
+        async function startVoiceInput() {
+            const btn = document.getElementById('voice-btn');
+            const statusDiv = document.getElementById('voice-status');
+
+            try {
+                if (!mediaRecorder) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        await processAudio(audioBlob);
+                    };
+                }
+
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                    btn.textContent = '🎙️ Start Recording';
+                    btn.style.background = '';
+                    statusDiv.innerHTML = '';
+                } else {
+                    mediaRecorder.start();
+                    btn.textContent = `<span class="voice-indicator"></span>` + t('recording');
+                    btn.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                    statusDiv.innerHTML = `<div class="status-message status-success">Listening...</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message status-error">Microphone access denied. Please check permissions.</div>`;
+            }
+        }
+
+        // ============ Process Audio ============
+        async function processAudio(audioBlob) {
+            const statusDiv = document.getElementById('voice-status');
+
+            try {
+                statusDiv.innerHTML = `<div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Processing your voice input...</p>
+                </div>`;
+
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+                formData.append('language', currentLanguage);
+
+                const response = await fetch(`${API_BASE}/voice_query`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to process voice input');
+                }
+
+                const data = await response.json();
+
+                // Auto-fill form from extracted data
+                if (data.age) document.getElementById('age').value = data.age;
+                if (data.bpl_status !== undefined) {
+                    document.getElementById('bpl').value = data.bpl_status ? 'yes' : 'no';
+                }
+                if (data.occupation) document.getElementById('occupation').value = data.occupation;
+
+                statusDiv.innerHTML = `<div class="status-message status-success">✓ Voice processed successfully! Form auto-filled.</div>`;
+
+                // Auto-check eligibility
+                setTimeout(() => checkEligibility(), 1000);
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message status-error">Error processing voice: ${error.message}</div>`;
+            }
+        }
+
+        // ============ Document Processing ============
+        async function processDocument() {
+            const fileInput = document.getElementById('document');
+            const statusDiv = document.getElementById('document-status');
+
+            if (!fileInput.files.length) {
+                alert('Please select a document');
+                return;
+            }
+
+            try {
+                statusDiv.innerHTML = `<div class="loading-container">
+                    <div class="spinner"></div>
+                    <p>${t('processing')}</p>
+                </div>`;
+
+                const formData = new FormData();
+                formData.append('document', fileInput.files[0]);
+                formData.append('language', currentLanguage);
+
+                const response = await fetch(`${API_BASE}/process_document`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to process document');
+                }
+
+                const data = await response.json();
+
+                // Auto-fill form from extracted data
+                if (data.age) document.getElementById('age').value = data.age;
+                if (data.bpl_status !== undefined) {
+                    document.getElementById('bpl').value = data.bpl_status ? 'yes' : 'no';
+                }
+
+                statusDiv.innerHTML = `<div class="status-message status-success">✓ Document processed! Form auto-filled.</div>`;
+
+                // Switch to form and auto-check
+                document.querySelector('[data-method="form"]').click();
+                setTimeout(() => checkEligibility(), 1000);
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status-message status-error">Error processing document: ${error.message}</div>`;
+            }
+        }
+
+        // ============ Status Messages ============
+        function showStatus(message, type = 'success') {
+            const className = type === 'error' ? 'status-error' : 'status-success';
+            const icon = type === 'error' ? '❌' : '✓';
+            alert(`${icon} ${message}`);
+        }
+
+        // ============ Smooth Scroll ============
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // ============ Initialization ============
+        window.addEventListener('load', () => {
+            console.log('Frontend loaded and ready');
+            console.log('API endpoint:', API_BASE);
+        });
+    </script>
+</body>
+</html>
