@@ -584,3 +584,1022 @@ The highest-value work is:
 ```
 
 The codebase already contains enough components for a compelling hackathon prototype. The next milestone is not "more AI"; it is **proving that the existing AI, policy, security, and UI layers form one coherent, runnable product.**
+
+
+---
+
+# 14. Round 2 Build Order: Detailed Engineering Plan
+
+Round 2 should be treated as a **vertical-slice hardening sprint**, not a feature-collection sprint.
+
+The goal is to make one complete user journey reliable, auditable, accessible, and demoable, then use the same architecture for the remaining supported schemes.
+
+## Phase 0 — Freeze the scope
+
+### Objective
+
+Stop feature creep.
+
+### Freeze the supported schemes
+
+1. IGNOAPS
+2. E-Shram
+3. PM-Kisan
+
+### Freeze the primary demo
+
+> "Meri maa 72 saal ki hain aur BPL card hai. Unko pension mil sakti hai?"
+
+### Freeze the secondary demo
+
+> Upload document → review extracted information → confirm → check eligibility.
+
+### Do not spend Round 2 time on
+
+- Kubernetes
+- microservices
+- blockchain
+- multi-agent systems
+- large-scale vector databases
+- dozens of additional schemes
+- analytics dashboards unrelated to the core user journey
+
+### Deliverable
+
+Create a team checklist containing the exact features that are in scope and out of scope.
+
+**Definition of done:** every team member agrees that no new feature enters the build unless it directly improves the frozen demo.
+
+---
+
+## Phase 1 — Repository cleanup
+
+### Step 1: Remove generated artifacts
+
+Remove committed:
+
+- __pycache__/
+- *.pyc
+- temporary files
+- local cache artifacts that should not be versioned
+
+### Step 2: Fix .gitignore
+
+Include Python caches, local environments, secrets, generated files, and local configuration.
+
+### Step 3: Search for incomplete implementation
+
+Search the repository for:
+
+~~~text
+placeholder
+stub
+TODO
+FIXME
+not implemented
+legacy
+hardcoded
+~~~
+
+Create a checklist for every result.
+
+### Step 4: Reconcile documentation
+
+Remove or correct claims such as:
+
+- production ready
+- 100% coverage
+- all tests passing
+- exact latency
+- offline support
+- cache hit rate
+
+unless those claims are produced by an actual current test/run.
+
+**Definition of done:** the repository documentation describes what the running application actually does.
+
+---
+
+## Phase 2 — Fix main.py and application startup
+
+This is the first coding priority.
+
+### Step 1
+
+Keep exactly one FastAPI application instance.
+
+### Step 2
+
+Register CORS once.
+
+### Step 3
+
+Register rate limiting once.
+
+### Step 4
+
+Register security middleware once.
+
+### Step 5
+
+Register exception handlers.
+
+### Step 6
+
+Register all canonical API routes.
+
+### Step 7
+
+Add and verify /health.
+
+### Step 8
+
+Start the application:
+
+~~~bash
+uvicorn app.main:app --reload
+~~~
+
+### Step 9
+
+Open the generated API documentation and manually call every endpoint.
+
+**Definition of done:** there is exactly one running FastAPI application containing the complete intended API surface.
+
+---
+
+## Phase 3 — Freeze the API contract
+
+Use one canonical API namespace.
+
+### Required endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | /health | Health |
+| GET | /api/schemes | Scheme list |
+| GET | /api/schemes/{id} | Scheme information |
+| POST | /api/check-eligibility | Single scheme |
+| POST | /api/check-all-schemes | All supported schemes |
+| POST | /api/voice-upload | Audio/STT |
+| POST | /api/voice-query | Voice/text workflow |
+| POST | /api/scan-document | OCR |
+| POST | /api/confirm-document | Confirm extracted data |
+
+### For each endpoint
+
+1. Define request model.
+2. Define response model.
+3. Implement endpoint.
+4. Connect service.
+5. Update frontend.
+6. Update tests.
+7. Remove old endpoint names.
+8. Test manually.
+9. Add an integration test.
+
+**Definition of done:** frontend, backend, tests, and documentation all use exactly the same route names and schemas.
+
+---
+
+## Phase 4 — Fix data-model semantics
+
+### Problem
+
+Eligibility fields currently risk collapsing "unknown" into "false".
+
+### Target
+
+Use three-state semantics:
+
+~~~text
+True  = confirmed yes
+False = confirmed no
+None  = unknown
+~~~
+
+Example:
+
+~~~python
+has_bpl: Optional[bool] = None
+is_farmer: Optional[bool] = None
+is_organised_worker: Optional[bool] = None
+land_holding_hectares: Optional[float] = None
+~~~
+
+### Step-by-step
+
+1. Update Pydantic models.
+2. Update frontend request payloads.
+3. Update rule functions.
+4. Update missing-data detection.
+5. Add tests for True/False/None.
+6. Ensure missing data produces cannot_determine or a clarification question.
+
+**Definition of done:** no eligibility rule can interpret an unanswered question as a confirmed negative.
+
+---
+
+## Phase 5 — Make the rule engine the single source of truth
+
+### Target flow
+
+~~~text
+API
+ ↓
+Integration Service
+ ↓
+Rule Engine
+ ↓
+scheme_rules.py
+ ↓
+Structured Result
+~~~
+
+### Step-by-step
+
+1. Remove eligibility decisions from main.py.
+2. Remove duplicate policy decisions from integration code.
+3. Keep scheme-specific rules in scheme_rules.py.
+4. Make rule_engine.py the public decision interface.
+5. Return a structured result containing:
+   - scheme
+   - verdict
+   - reasons
+   - missing fields
+   - confidence/decision state
+   - source metadata
+6. Add boundary tests.
+
+### Required verdicts
+
+~~~text
+eligible
+not_eligible
+cannot_determine
+invalid_input
+~~~
+
+**Definition of done:** every eligibility decision can be traced to one canonical rule function.
+
+---
+
+## Phase 6 — Policy verification
+
+For each supported scheme, create a policy record containing:
+
+- official source URL
+- source/department
+- verification date
+- eligibility rules
+- exclusions
+- benefit information
+- required evidence
+- application/action information
+- uncertainty conditions
+
+### Step-by-step
+
+1. Open the authoritative official source.
+2. Record the exact current conditions.
+3. Compare them with scheme_rules.py.
+4. Correct outdated assumptions.
+5. Add boundary tests.
+6. Add source metadata to the result.
+7. Display source information in the UI.
+
+### Important checks
+
+- Do not use the obsolete simplistic PM-Kisan "2 hectare" rule as the complete eligibility model.
+- Do not infer BPL status merely from the existence of a generic ration card.
+- Do not present a benefit amount as universal unless the current source supports that exact claim.
+- If official sources differ, document the discrepancy instead of silently choosing one.
+
+**Definition of done:** every eligibility statement shown to the user has a traceable source.
+
+---
+
+## Phase 7 — Real OCR pipeline
+
+### Backend pipeline
+
+~~~text
+Upload
+ ↓
+File validation
+ ↓
+Image preprocessing
+ ↓
+Tesseract
+ ↓
+Field extraction
+ ↓
+Field confidence
+ ↓
+PII sanitization
+ ↓
+needs_confirmation = true
+ ↓
+Frontend confirmation
+~~~
+
+### Frontend pipeline
+
+~~~text
+Upload
+ ↓
+"We found these details"
+ ↓
+User edits if necessary
+ ↓
+User confirms
+ ↓
+Eligibility evaluation
+~~~
+
+### Required OCR tests
+
+- valid document
+- invalid MIME
+- invalid file signature
+- corrupt image
+- low-confidence OCR
+- missing age
+- ambiguous BPL
+- PII cleanup
+- large document
+- unreadable document
+
+**Definition of done:** document upload can complete the full OCR → confirmation → eligibility flow without bypassing confirmation.
+
+---
+
+## Phase 8 — Real STT pipeline
+
+### Step-by-step
+
+1. Record audio using the browser's actual MIME type.
+2. Do not label WebM/Opus bytes as WAV.
+3. Validate audio server-side.
+4. Transcribe.
+5. Detect language.
+6. Detect silence.
+7. Extract intent/entities.
+8. Show the transcript.
+9. Ask for confirmation when the transcription is important.
+10. Continue to the rule engine only after required information is confirmed.
+
+### User experience
+
+~~~text
+I heard:
+
+"Meri maa 72 saal ki hain aur BPL card hai."
+
+[Confirm] [Edit]
+~~~
+
+### Confidence requirement
+
+If confidence is heuristic rather than model-calibrated, label it as estimated confidence or do not expose a misleading percentage.
+
+**Definition of done:** a real audio file produces a real transcript and enters the same canonical pipeline as manual input.
+
+---
+
+## Phase 9 — Missing-data and clarification engine
+
+This should become a visible product feature rather than an internal implementation detail.
+
+### Example
+
+~~~text
+User:
+"My mother is 72."
+
+System:
+"I can check pension eligibility, but I need to know whether
+she is registered as BPL."
+
+[Yes] [No] [I'm not sure]
+~~~
+
+### Step-by-step
+
+1. Determine the selected scheme.
+2. Determine required fields.
+3. Compare required fields with known fields.
+4. Ask only for missing required information.
+5. Store the answer in the structured request.
+6. Re-run the rule engine.
+7. Stop when a safe verdict is possible.
+
+**Definition of done:** the system can recover from incomplete user input without guessing.
+
+---
+
+## Phase 10 — Action-plan generation
+
+Do not stop at an eligibility verdict.
+
+Generate:
+
+~~~text
+Result
+ ↓
+Why
+ ↓
+Required documents
+ ↓
+Where to apply
+ ↓
+What to do next
+ ↓
+Official source
+~~~
+
+### Rules
+
+Action-plan items must come from verified knowledge.
+
+The system must not invent:
+
+- documents
+- fees
+- offices
+- deadlines
+- application steps
+
+**Definition of done:** every result includes a useful next step or an explicit explanation of what information is still missing.
+
+---
+
+## Phase 11 — LLM explanation layer
+
+Only activate the LLM after the deterministic result exists.
+
+### Input
+
+Structured verified result.
+
+### LLM is allowed to
+
+- simplify
+- translate
+- summarize
+- explain
+- organize verified next steps
+
+### LLM is not allowed to
+
+- change verdict
+- create policy
+- invent a benefit
+- invent a source
+- claim successful application
+- fill missing eligibility evidence
+
+### Failure fallback
+
+~~~text
+LLM unavailable
+     ↓
+Rule result
+     +
+Template explanation
+     +
+Official source
+~~~
+
+**Definition of done:** the application remains useful even if the LLM service is unavailable.
+
+---
+
+## Phase 12 — TTS
+
+### Step-by-step
+
+1. Produce final verified text.
+2. Select language.
+3. Generate speech.
+4. Return/play audio.
+5. Keep text visible as a fallback.
+
+### Test
+
+- Hindi
+- English
+- elderly-friendly slower speech
+- long responses
+- TTS provider failure
+
+**Definition of done:** TTS is an enhancement, not a single point of failure.
+
+---
+
+## Phase 13 — Security hardening
+
+Test the application over HTTP, not only individual helper functions.
+
+### Upload tests
+
+- oversized file
+- wrong MIME
+- wrong magic bytes
+- malicious filename
+- corrupt file
+
+### API tests
+
+- malformed JSON
+- invalid field values
+- oversized requests
+- repeated requests/rate limit
+- unauthorized access if authentication is later added
+- timeout/error handling
+
+### Privacy checks
+
+~~~text
+No raw PII in logs
+No unnecessary document persistence
+Temporary files cleaned
+No stack traces returned to users
+Sensitive identifiers masked
+~~~
+
+### Middleware check
+
+Keep one authoritative rate-limit mechanism.
+
+**Definition of done:** security controls are observable in real HTTP behavior.
+
+---
+
+## Phase 14 — Accessibility and elderly-first UX
+
+### Keyboard
+
+Test the entire journey:
+
+~~~text
+Tab
+ ↓
+Speak
+ ↓
+Upload
+ ↓
+Confirm
+ ↓
+Result
+ ↓
+Next step
+~~~
+
+### Screen reader
+
+Check:
+
+- labels
+- headings
+- buttons
+- status updates
+- errors
+- result announcements
+
+### Visual
+
+Check:
+
+- contrast
+- readable typography
+- visible focus
+- mobile layout
+- touch target size
+
+### Cognitive accessibility
+
+Avoid:
+
+- policy-heavy paragraphs
+- unexplained abbreviations
+- multiple questions at once
+- hidden error states
+
+**Definition of done:** a user can complete the main journey without needing to understand technical or bureaucratic terminology.
+
+---
+
+## Phase 15 — Frontend polish
+
+Implement five clear states.
+
+### State 1: Home
+
+~~~text
+How can I help you?
+
+[Speak]
+[Upload document]
+[Type]
+~~~
+
+### State 2: Listening
+
+~~~text
+Listening...
+~~~
+
+### State 3: Confirmation
+
+~~~text
+I understood:
+
+Age: 72
+BPL: Yes
+
+[Confirm]
+[Edit]
+~~~
+
+### State 4: Result
+
+~~~text
+IGNOAPS
+
+Result
+Why
+Documents
+What to do
+Official source
+~~~
+
+### State 5: Uncertainty
+
+~~~text
+I need one more detail.
+
+Is the person registered as a BPL beneficiary?
+
+[Yes]
+[No]
+[I'm not sure]
+~~~
+
+**Definition of done:** users always know what the system is doing and what action is expected next.
+
+---
+
+## Phase 16 — Full E2E testing
+
+Do not stop at unit tests.
+
+### Golden path
+
+~~~text
+Voice
+ ↓
+STT
+ ↓
+Intent
+ ↓
+Missing data
+ ↓
+Confirmation
+ ↓
+Rule
+ ↓
+Source
+ ↓
+Action plan
+ ↓
+LLM
+ ↓
+TTS
+~~~
+
+### OCR path
+
+~~~text
+Document
+ ↓
+OCR
+ ↓
+Confirmation
+ ↓
+Rule
+ ↓
+Result
+~~~
+
+### Manual path
+
+~~~text
+Form
+ ↓
+Rule
+ ↓
+Result
+~~~
+
+### Failure path
+
+~~~text
+Bad input
+ ↓
+Safe error
+ ↓
+Recovery option
+~~~
+
+At minimum, create real browser/API tests for the happy voice/manual path and the OCR confirmation path.
+
+---
+
+## Phase 17 — Performance measurement
+
+Measure before optimizing.
+
+Record:
+
+- API latency
+- STT latency
+- OCR latency
+- rule-engine latency
+- LLM latency
+- TTS latency
+- total response time
+- cache hit rate
+- cache miss rate
+
+Do not publish hard-coded numbers.
+
+The rule engine should be fast enough that external services dominate the latency profile.
+
+---
+
+## Phase 18 — Privacy verification
+
+Run a final privacy audit:
+
+- [ ] Raw documents are not unnecessarily persisted.
+- [ ] OCR text is not unnecessarily logged.
+- [ ] Aadhaar-like identifiers are masked.
+- [ ] Temporary files are cleaned.
+- [ ] Exceptions do not expose stack traces.
+- [ ] Cache does not retain unnecessary PII.
+- [ ] API responses contain only required information.
+
+---
+
+## Phase 19 — Judge demo engineering
+
+Build exactly two demonstrations.
+
+### Demo A — Happy path
+
+User:
+
+> "Meri maa 72 saal ki hain aur BPL card hai. Unko pension mil sakti hai?"
+
+Show:
+
+~~~text
+Voice
+ ↓
+Transcript
+ ↓
+Confirmation
+ ↓
+IGNOAPS
+ ↓
+Deterministic result
+ ↓
+Official source
+ ↓
+Action plan
+ ↓
+Hindi explanation / TTS
+~~~
+
+### Demo B — Deliberate uncertainty
+
+Give insufficient information.
+
+Expected behavior:
+
+~~~text
+I need one more detail before I can determine this.
+~~~
+
+This is valuable because it proves the system does not simply guess.
+
+### Demo C — Optional failure fallback
+
+Temporarily disable/mock the LLM and show:
+
+~~~text
+Rule result
+ ↓
+Template explanation
+ ↓
+Official source
+~~~
+
+This proves the product does not collapse when an external AI service fails.
+
+---
+
+## Phase 20 — Presentation evidence
+
+Prepare:
+
+### Slide 1: Problem
+Why elderly/low-literacy users struggle with government-service information.
+
+### Slide 2: Solution
+Voice + documents + verified rules + action plan.
+
+### Slide 3: Architecture
+One clean system diagram.
+
+### Slide 4: Safety
+~~~text
+AI understands
+      ↓
+Rules decide
+      ↓
+Sources verify
+      ↓
+AI explains
+~~~
+
+### Slide 5: Live demo
+Use the happy path.
+
+### Slide 6: Failure/uncertainty
+Show the system refusing to guess.
+
+### Slide 7: Measured impact
+Use actual user-testing results only.
+
+Never invent adoption, accuracy, latency, or impact numbers.
+
+---
+
+## Phase 21 — Final freeze
+
+Run:
+
+~~~bash
+pytest -q
+pytest --cov=app --cov-report=term-missing
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+~~~
+
+Then manually test:
+
+- [ ] Voice
+- [ ] Document
+- [ ] Manual input
+- [ ] Hindi
+- [ ] English
+- [ ] Missing data
+- [ ] Invalid upload
+- [ ] STT failure
+- [ ] OCR failure
+- [ ] LLM failure
+- [ ] TTS failure
+- [ ] Mobile layout
+- [ ] Keyboard navigation
+
+Create backups:
+
+- Git repository
+- ZIP
+- demo machine
+- sample audio
+- sample document
+- .env.example
+- offline/demo fallback assets
+
+---
+
+# 17. Round 2 definition of done
+
+The project is Round-2 ready when:
+
+- [ ] One FastAPI application instance
+- [ ] Canonical API contract
+- [ ] No placeholder responses
+- [ ] Real OCR endpoint
+- [ ] Real STT endpoint
+- [ ] OCR confirmation enforced
+- [ ] Unknown values remain unknown
+- [ ] One canonical rule engine
+- [ ] Official policy sources verified
+- [ ] Source attribution visible
+- [ ] Action plans use verified information
+- [ ] LLM is explanation-only
+- [ ] TTS works or has fallback
+- [ ] Frontend uses canonical endpoints
+- [ ] Browser audio MIME handling is correct
+- [ ] Security validation tested through HTTP
+- [ ] Rate limiting tested
+- [ ] PII-safe logging verified
+- [ ] Generated artifacts removed from Git
+- [ ] Tests actually executed
+- [ ] Coverage measured
+- [ ] At least one genuine browser E2E flow
+- [ ] Hindi voice demo works
+- [ ] Document demo works
+- [ ] Uncertainty demo works
+- [ ] External-AI failure has a deterministic fallback
+- [ ] Documentation matches actual runtime
+
+---
+
+# 18. Team questions
+
+Before calling the project finished, the team should be able to answer:
+
+1. Which government source wins when two official pages disagree?
+2. What happens when OCR confidence is low?
+3. What happens when speech is unclear?
+4. What happens when the user gives contradictory information?
+5. Which fields are mandatory for each scheme?
+6. Can a result be eligible when a required field is unknown?
+7. Where exactly is the final decision made?
+8. Can the LLM change that decision?
+9. What personal information is stored?
+10. How long is it retained?
+11. What happens when the LLM/API is unavailable?
+12. What happens when internet connectivity is lost?
+13. Can a caregiver operate the system for another person?
+14. How is "not eligible" distinguished from "cannot determine"?
+15. How will you demonstrate actual user benefit?
+
+---
+
+# 19. Priority matrix
+
+| Priority | Work | Reason |
+|---|---|---|
+| P0 | Fix main.py | Core runtime |
+| P0 | Remove OCR/STT stubs | Live demo |
+| P0 | Unify API | Frontend/backend correctness |
+| P0 | Canonical rule engine | Eligibility correctness |
+| P0 | Unknown ≠ false | Safety |
+| P0 | Verify policy sources | Credibility |
+| P1 | OCR confirmation | Trust |
+| P1 | STT confirmation | Voice reliability |
+| P1 | E2E testing | Proof |
+| P1 | Frontend polish | UX |
+| P1 | Security testing | Safety |
+| P1 | TTS | Accessibility |
+| P2 | Semantic/vector retrieval | Enhancement |
+| P2 | More schemes | Scope expansion |
+| P2 | Analytics/dashboard | Non-core |
+| P2 | Kubernetes/microservices | Unnecessary for current hackathon stage |
+
+---
+
+# 20. Final engineering direction
+
+~~~text
+                    DIGITAL SAARTHI
+
+       Voice ─────┐
+                  │
+       Document ──┼──→ UNDERSTANDING
+                  │
+       Manual ────┘
+                       ↓
+                  CONFIRMATION
+                       ↓
+               DETERMINISTIC RULES
+                       ↓
+                VERIFIED POLICY
+                       ↓
+             ┌─────────┴─────────┐
+             ↓                   ↓
+        ACTION PLAN         EXPLANATION
+             │                   │
+             └─────────┬─────────┘
+                       ↓
+                 HINDI / ENGLISH
+                       ↓
+                  TEXT / VOICE
+                       ↓
+                      USER
+~~~
+
+### Engineering principle
+
+> **Do not make Digital Saarthi smarter before making it more coherent.**
+
+The repository already contains most of the ingredients. Round 2 should connect them into **one reliable, auditable, judge-ready vertical slice**.
+
+### Round-2 execution order
+
+**Freeze scope → clean repo → fix runtime → unify API → fix data models → centralize rules → verify policy → real OCR → real STT → confirmation → action plans → LLM guardrails → TTS → security → accessibility → E2E → demo → final freeze.**
